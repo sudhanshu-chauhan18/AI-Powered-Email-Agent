@@ -93,6 +93,7 @@ public class ConversationService {
 
     private ConversationResponse mapToResponse(Conversation userSaved) {
         ConversationResponse response = new ConversationResponse();
+        response.setId(userSaved.getId());
         response.setEmail(userSaved.getCustomerEmail());
         response.setSubject(userSaved.getSubject());
         response.setMessage(userSaved.getMessage());

@@ -16,136 +16,158 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AiEmailWriterService {
 
-    private final RestTemplate restTemplate;
+        private final RestTemplate restTemplate;
 
-    @Value("${groq.api.key}")
-    private String apiKey;
+        @Value("${groq.api.key}")
+        private String apiKey;
 
-    @Value("${groq.api.url}")
-    private String apiUrl;
+        @Value("${groq.api.url}")
+        private String apiUrl;
 
-    public GenerateEmailResponse generateEmail(String prompt) {
+        public GenerateEmailResponse generateEmail(String prompt) {
 
-        String finalPrompt = """
-                        Return email in this format:
+                String finalPrompt = """
+                                You are a Professional Email Assistant.
 
-                        Subject: <subject>
+                                Rules:
+                                1. You can ONLY generate, improve, rewrite, refine, summarize, or reply to emails.
+                                2. If the user request is NOT related to email writing or email communication,
+                                return exactly:
 
-                        Body:
-                        <body>
+                                Subject: Not Applicable
 
-                        %s
-                        """.formatted(prompt);
+                                Body:
+                                Sorry, I can only help with email generation, email refinement, and email replies.
 
-        Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put(
-                "model",
-                "llama-3.3-70b-versatile"
-        );
+                                3. Always return response in this exact format:
 
-        requestBody.put(
-                "messages",
-                List.of(
-                        Map.of(
-                                "role",
-                                "user",
-                                "content",
-                                finalPrompt
-                        )
-                )
-        );
+                                Subject: <subject>
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
+                                Body:
+                                <body>
 
-        headers.setBearerAuth(apiKey);
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+                                User Request:
+                                %s
+                                """.formatted(prompt);
 
-        ResponseEntity<Map> response = restTemplate.exchange(
-                        apiUrl,
-                        HttpMethod.POST,
-                        entity,
-                        Map.class
-        );
+                Map<String, Object> requestBody = new HashMap<>();
+                requestBody.put(
+                                "model",
+                                "llama-3.3-70b-versatile");
 
-        List<Map<String, Object>> choices = (List<Map<String, Object>>)
-                response.getBody().get("choices");
+                requestBody.put(
+                                "messages",
+                                List.of(
+                                                Map.of(
+                                                                "role",
+                                                                "user",
+                                                                "content",
+                                                                finalPrompt)));
 
-        Map<String, Object> firstChoice = choices.get(0);
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
 
-        Map<String, Object> message = (Map<String, Object>) firstChoice.get("message");
+                headers.setBearerAuth(apiKey);
+                HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
-        String aiResponse = message.get("content").toString();
+                ResponseEntity<Map> response = restTemplate.exchange(
+                                apiUrl,
+                                HttpMethod.POST,
+                                entity,
+                                Map.class);
 
-        String subject = "";
-        String body = aiResponse;
-        if(aiResponse.startsWith("Subject:")) {
-            String[] parts =
-                    aiResponse.split("\n", 2);
+                List<Map<String, Object>> choices = (List<Map<String, Object>>) response.getBody().get("choices");
 
-            subject = parts[0]
-                    .replace("Subject:", "")
-                    .trim();
+                Map<String, Object> firstChoice = choices.get(0);
 
-            body = parts[1]
-                    .replace("Body:", "")
-                    .trim();
+                Map<String, Object> message = (Map<String, Object>) firstChoice.get("message");
+
+                String aiResponse = message.get("content").toString();
+
+                String subject = "";
+                String body = aiResponse;
+                if (aiResponse.startsWith("Subject:")) {
+                        String[] parts = aiResponse.split("\n", 2);
+
+                        subject = parts[0]
+                                        .replace("Subject:", "")
+                                        .trim();
+
+                        body = parts[1]
+                                        .replace("Body:", "")
+                                        .trim();
+                }
+
+                return new GenerateEmailResponse(
+                                subject,
+                                body);
         }
 
-        return new GenerateEmailResponse(
-                subject,
-                body
-        );
-    }
+        public GenerateReplyResponse generateReply(String threadId, String context) {
 
-    public GenerateReplyResponse generateReply(String threadId, String context) {
+                String prompt = """
+                                You are a Professional Email Assistant.
 
-        String prompt = """
-            You are an email assistant.
-            Below is the email conversation:
+                                Your job is ONLY to generate professional email replies.
 
-            %s
+                                Based on the conversation history and current email content, generate a reply to the customer email.
 
-            Generate a professional reply
-            to the latest customer message.
-            """
-                .formatted(context);
+                                If the conversation does not contain a valid email discussion,
+                                return:
 
-        GenerateEmailResponse response = generateEmail(prompt);
+                                Subject: Not Applicable
 
-        return new GenerateReplyResponse(threadId, response.getBody()
-        );
-    }
+                                Body:
+                                Sorry, I can only generate replies for email conversations.
 
-    //Refine version of existing email
-    public GenerateEmailResponse refineDraft(String subject, String message, String instructions) {
+                                Conversation:
+                                %s
+                                """
+                                .formatted(context);
 
-        String prompt = """
-            Improve the following email.
+                GenerateEmailResponse response = generateEmail(prompt);
 
-            Instruction:
-            %s
+                return new GenerateReplyResponse(threadId, response.getBody());
+        }
 
-            Current Subject:
-            %s
+        // Refine version of existing email
+        public GenerateEmailResponse refineDraft(String subject, String message, String instructions) {
 
-            Current Email:
-            %s
+                String prompt = """
+                                You are a Professional Email Assistant.
 
-            Return email in this format:
+                                You can ONLY improve email content.
 
-            Subject: <subject>
+                                If the instruction is unrelated to email writing,
+                                return:
 
-            Body:
-            <body>
-            """
-                .formatted(
-                        instructions,
-                        subject,
-                        message
-                );
+                                Subject: Not Applicable
 
-        return generateEmail(prompt);
+                                Body:
+                                Sorry, I can only assist with email-related tasks.
 
-    }
+                                Instruction:
+                                %s
+
+                                Current Subject:
+                                %s
+
+                                Current Email:
+                                %s
+
+                                Return email in this format:
+
+                                Subject: <subject>
+
+                                Body:
+                                <body>
+                                """
+                                .formatted(
+                                                instructions,
+                                                subject,
+                                                message);
+
+                return generateEmail(prompt);
+
+        }
 }

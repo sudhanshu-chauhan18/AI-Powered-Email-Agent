@@ -22,18 +22,15 @@ public class UserController {
     private final AiEmailWriterService aiEmailWriterService;
 
     @PostMapping("/send")
-    public ResponseEntity<String> sendEmail(@RequestBody SendEmailRequest request){
+    public ResponseEntity<String> sendEmail(@RequestBody SendEmailRequest request) {
         conversationService.sendAndSaveEmail(
                 request.getTo(),
                 request.getSubject(),
                 request.getBody(),
-                request.getThreadId()
-        );
+                request.getThreadId());
         return ResponseEntity.ok(
-                "Email Sent Successfully"
-        );
+                "Email Sent Successfully");
     }
-
 
     @GetMapping("/conversations/{email}")
     public List<ConversationResponse> getConversation(@PathVariable String email) {
@@ -50,18 +47,28 @@ public class UserController {
         return aiEmailWriterService.generateEmail(request.getPrompt());
     }
 
-    //generate the mail
+    // generate the mail
     @PostMapping("/generate-save")
-    public GenerateEmailResponse generateAndSave(@RequestBody GenerateAndSaveRequest request){
+    public GenerateEmailResponse generateAndSave(@RequestBody GenerateAndSaveRequest request) {
 
         GenerateEmailResponse draft = aiEmailWriterService.generateEmail(request.getPrompt());
         conversationService.saveDraft(
                 request.getEmail(),
                 draft.getSubject(),
                 draft.getBody(),
-                request.getThreadId()
-        );
+                request.getThreadId());
         return draft;
+    }
+
+    // Save a custom email draft | custom changes
+    @PostMapping("/draft/save-custom")
+    public ResponseEntity<String> saveCustomDraft(@RequestBody SendEmailRequest request) {
+        conversationService.saveDraft(
+                request.getTo(),
+                request.getSubject(),
+                request.getBody(),
+                request.getThreadId());
+        return ResponseEntity.ok("Draft Saved Successfully");
     }
 
     // Get All the draft of email
@@ -70,13 +77,11 @@ public class UserController {
         return conversationService.getDrafts();
     }
 
-
     // send the draft email.
     @PostMapping("/draft/send")
     public ConversationResponse sendDraft(@RequestBody SendDraftRequest request) {
         return conversationService.sendDraft(request.getConversationId());
     }
-
 
     // delete the draft email.
     @DeleteMapping("/draft/{id}")
@@ -85,24 +90,20 @@ public class UserController {
         return ResponseEntity.ok("Draft deleted successfully");
     }
 
-
     @GetMapping("/sent")
     public List<ConversationResponse> getSentEmails() {
         return conversationService.getSentEmails();
     }
 
-    //Generate the reply of email
+    // Generate the reply of email
     @PostMapping("/generate-reply")
     public GenerateReplyResponse generateReply(@RequestBody GenerateReplyRequest request) {
-        String context =
-                conversationService.buildConversationContext(
-                                request.getThreadId()
-                        );
+        String context = conversationService.buildConversationContext(
+                request.getThreadId());
 
         return aiEmailWriterService.generateReply(
-                        request.getThreadId(),
-                        context
-        );
+                request.getThreadId(),
+                context);
     }
 
     // Refine the existing email draft.
@@ -110,9 +111,7 @@ public class UserController {
     public ConversationResponse refineDraft(@RequestBody RefineDraftRequest request) {
         return conversationService.refineDraft(
                 request.getDraftId(),
-                request.getInstructions()
-        );
+                request.getInstructions());
     }
-
 
 }

@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class ConversationResponse {
 
+    private Integer id;
     private String email;
     private String subject;
     private String role;
